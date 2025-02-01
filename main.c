@@ -12,7 +12,7 @@
 #define single_player_world_TILE_COUNT 35
 #define single_player_world_MAP_ATTRIBUTES single_player_world_map_attributes
 #define single_player_world_TILE_PALS 0
-#define single_player_world_PALETTE_COUNT 4
+#define single_player_world_PALETTE_COUNT 6
 
 BANKREF_EXTERN(single_player_world)
 
@@ -131,6 +131,10 @@ int detect_multiplayer_mode() {
 	return 0;
 }
 
+void load_multiplayer_level() {
+
+}
+
 void play_audio(void) {
 	// Enable sound - sound registers
 	NR52_REG = 0x80;
@@ -181,7 +185,7 @@ void main(void)
 		// detect if link cable is connected and if so, enable multiplayer mode
 		if (detect_multiplayer_mode())
 		{
-			printf("Multiplayer mode enabled!\n");
+			load_multiplayer_level();
 		};
 
 		// Done processing, yield CPU and wait for start of next frame
