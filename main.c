@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <gbdk/platform.h>
 #include <gbdk/metasprites.h>
+#include <stdio.h>
 
 #define single_player_world_TILE_ORIGIN 0
 #define single_player_world_TILE_H 8
@@ -112,10 +113,60 @@ const unsigned char single_player_world_map_attributes[360] = {
 	0x01,0x41,0x01,0x01,0x01,0x01,0x01,0x01,0x41,0x01,0x61,0x01,0x41,0x41,0x01,0x41,0x61,0x01,0x01,0x01,
 };
 
+unsigned char str[] = "Hello World!";
+unsigned char buffer[32];
+
+void detect_multiplayer_mode(uint8_t n, unsigned char *s) {
+		/* Detect if link cable is connected and if so, enable multiplayer mode */
+		// Based on comm.c from GBDK
+        /* Send 1 byte */
+        printf("Sending b... ");
+        _io_out = n++;
+        send_byte();
+        /* Wait for IO completion... */
+        while((_io_status == IO_SENDING) && (joypad() == 0));
+        if(_io_status == IO_IDLE)
+                printf("OK\n");
+        else
+            printf("#%d\n", _io_status);
+        /* Receive 1 byte */
+        printf("Receiving b... ");
+        receive_byte();
+        /* Wait for IO completion... */
+        while((_io_status == IO_RECEIVING) && (joypad() == 0));
+        if(_io_status == IO_IDLE)
+            printf("OK\n%d\n", _io_in);
+        else
+            printf("#%d\n", _io_status);
+}
+
+void play_audio(void) {
+	// Enable sound - sound registers
+	NR52_REG = 0x80;
+	NR51_REG = 0xFF;
+	NR50_REG = 0x77;
+
+	// play sound
+	NR10_REG = 0x16;
+	NR11_REG = 0x40;
+	NR12_REG = 0x73;
+	NR13_REG = 0x00;
+	NR14_REG = 0xC3;
+}
+
 void main(void)
 {
     DISPLAY_ON;
     SHOW_BKG;
+
+	// Serial I/O initialization
+    uint8_t n = 0;
+    unsigned char *s;
+
+    CRITICAL {
+        add_SIO(nowait_int_handler);    // disable waiting VRAM state before return
+    }
+    set_interrupts(SIO_IFLAG);          // disable other interrupts. note: this disables sprite movement
 
     // Populate VRAM with our tile data
     set_bkg_data(0,single_player_world_TILE_COUNT,single_player_world_tiles);
@@ -132,24 +183,15 @@ void main(void)
     VBK_REG=0;
     set_bkg_tiles(0,0,20,18,single_player_world_map);
 
-    // Loop forever
+    // Main Game Loop
     while(1) {
-		// Game main loop processing goes here
-		
-		// Enable sound - sound registers:
-		NR52_REG = 0x80;
-		NR51_REG = 0xFF;
-		NR50_REG = 0x77;
 
-		// play sound
-		NR10_REG = 0x16;
-		NR11_REG = 0x40;
-		NR12_REG = 0x73;
-		NR13_REG = 0x00;
-		NR14_REG = 0xC3;
+		// play audio
+		play_audio();
 
-		// Wait for sound to finish
-		while (NR52_REG & 0x80);
+		// multiplayer mode - link cable functionality
+		// detect if link cable is connected and if so, enable multiplayer mode
+		detect_multiplayer_mode(n, s);
 
 		// Done processing, yield CPU and wait for start of next frame
         wait_vbl_done();
