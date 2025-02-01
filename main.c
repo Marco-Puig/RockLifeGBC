@@ -113,31 +113,22 @@ const unsigned char single_player_world_map_attributes[360] = {
 	0x01,0x41,0x01,0x01,0x01,0x01,0x01,0x01,0x41,0x01,0x61,0x01,0x41,0x41,0x01,0x41,0x61,0x01,0x01,0x01,
 };
 
-unsigned char str[] = "Hello World!";
-unsigned char buffer[32];
+int detect_multiplayer_mode() {
+    /* Sending a test byte */
+    send_byte(); 
+    // Wait for IO completion...
+    while((_io_status == IO_SENDING)); // Based on comm.c from GBDK
+    if (_io_status == IO_IDLE)
+        return 1;
 
-void detect_multiplayer_mode(uint8_t n, unsigned char *s) {
-		/* Detect if link cable is connected and if so, enable multiplayer mode */
-		// Based on comm.c from GBDK
-        /* Send 1 byte */
-        printf("Sending b... ");
-        _io_out = n++;
-        send_byte();
-        /* Wait for IO completion... */
-        while((_io_status == IO_SENDING) && (joypad() == 0));
-        if(_io_status == IO_IDLE)
-                printf("OK\n");
-        else
-            printf("#%d\n", _io_status);
-        /* Receive 1 byte */
-        printf("Receiving b... ");
-        receive_byte();
-        /* Wait for IO completion... */
-        while((_io_status == IO_RECEIVING) && (joypad() == 0));
-        if(_io_status == IO_IDLE)
-            printf("OK\n%d\n", _io_in);
-        else
-            printf("#%d\n", _io_status);
+    /* Receiving test byte */
+    receive_byte();
+    // Wait for IO completion... 
+    while((_io_status == IO_RECEIVING));
+    if (_io_status == IO_IDLE)
+        return 1;
+	
+	return 0;
 }
 
 void play_audio(void) {
@@ -160,9 +151,6 @@ void main(void)
     SHOW_BKG;
 
 	// Serial I/O initialization
-    uint8_t n = 0;
-    unsigned char *s;
-
     CRITICAL {
         add_SIO(nowait_int_handler);    // disable waiting VRAM state before return
     }
@@ -191,7 +179,10 @@ void main(void)
 
 		// multiplayer mode - link cable functionality
 		// detect if link cable is connected and if so, enable multiplayer mode
-		detect_multiplayer_mode(n, s);
+		if (detect_multiplayer_mode())
+		{
+			printf("Multiplayer mode enabled!\n");
+		};
 
 		// Done processing, yield CPU and wait for start of next frame
         wait_vbl_done();
